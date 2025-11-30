@@ -120,22 +120,44 @@ export default function PreviewRenderer({ html, css, onBack }: PreviewRendererPr
             if (isFullDocument) {
                 let documentHtml = sanitizedHtml;
 
+                // Add custom CSS if provided
                 if (css && documentHtml.includes("</head>")) {
                     documentHtml = documentHtml.replace("</head>", `<style>${css}</style></head>`);
+                } else if (css && documentHtml.includes("</style>")) {
+                    // If there's already a style tag, append to it
+                    const lastStyleIndex = documentHtml.lastIndexOf("</style>");
+                    if (lastStyleIndex !== -1) {
+                        documentHtml = documentHtml.slice(0, lastStyleIndex) + css + documentHtml.slice(lastStyleIndex);
+                    }
                 }
 
+                // Inject Tailwind config script if needed
                 if (TAILWIND_CDN_REGEX.test(documentHtml)) {
-                    documentHtml = documentHtml.replace(
-                        TAILWIND_CDN_REGEX,
-                        (match) => `${match}\n${tailwindConfigTag}`
-                    );
+                    // Check if config already exists
+                    const hasConfig = /tailwind\.config\s*=/.test(documentHtml);
+                    if (!hasConfig) {
+                        documentHtml = documentHtml.replace(
+                            TAILWIND_CDN_REGEX,
+                            (match) => `${match}\n${tailwindConfigTag}`
+                        );
+                    }
                 } else if (documentHtml.includes("</head>")) {
-                    documentHtml = documentHtml.replace(
-                        "</head>",
-                        `${tailwindConfigTag}\n</head>`
-                    );
+                    // Add Tailwind CDN and config if not present
+                    const hasTailwindCDN = /cdn\.tailwindcss\.com/.test(documentHtml);
+                    const hasConfig = /tailwind\.config\s*=/.test(documentHtml);
+                    if (!hasTailwindCDN) {
+                        documentHtml = documentHtml.replace(
+                            "</head>",
+                            `<script src="https://cdn.tailwindcss.com"></script>\n${tailwindConfigTag}\n</head>`
+                        );
+                    } else if (!hasConfig) {
+                        documentHtml = documentHtml.replace(
+                            "</head>",
+                            `${tailwindConfigTag}\n</head>`
+                        );
+                    }
                 } else {
-                    documentHtml = `${tailwindConfigTag}${documentHtml}`;
+                    documentHtml = `<script src="https://cdn.tailwindcss.com"></script>\n${tailwindConfigTag}${documentHtml}`;
                 }
 
                 return documentHtml;
@@ -184,53 +206,110 @@ export default function PreviewRenderer({ html, css, onBack }: PreviewRendererPr
         };
 
         const documentHtml = buildDocument();
-        const parser = new DOMParser();
-        const parsedDoc = parser.parseFromString(documentHtml, "text/html");
         
-        // Extract scripts from the parsed document
-        const externalScripts = Array.from(parsedDoc.querySelectorAll("script[src]")) as HTMLScriptElement[];
-        const inlineScripts = Array.from(parsedDoc.querySelectorAll("script:not([src])")) as HTMLScriptElement[];
+        // Write the full document first
+        doc.open();
+        doc.write(documentHtml);
+        doc.close();
         
-        // Remove all scripts from the HTML before writing
-        let htmlWithoutScripts = documentHtml;
-        const allScripts = [...externalScripts, ...inlineScripts];
-        allScripts.forEach((script) => {
-            const scriptTag = script.outerHTML;
-            htmlWithoutScripts = htmlWithoutScripts.replace(scriptTag, "");
+        // Now extract and remove resources from the actual iframe document
+        // This is more reliable than string manipulation
+        const externalStylesheets = Array.from(doc.querySelectorAll("link[rel='stylesheet']")) as HTMLLinkElement[];
+        const externalScripts = Array.from(doc.querySelectorAll("script[src]")) as HTMLScriptElement[];
+        const inlineScripts = Array.from(doc.querySelectorAll("script:not([src])")) as HTMLScriptElement[];
+        
+        // Store resource data before removing
+        const stylesheetData = externalStylesheets.map(link => ({
+            href: link.getAttribute("href") || "",
+            rel: link.getAttribute("rel") || "stylesheet"
+        }));
+        
+        const scriptData = externalScripts.map(script => ({
+            src: script.getAttribute("src") || "",
+            async: script.hasAttribute("async"),
+            defer: script.hasAttribute("defer")
+        }));
+        
+        const inlineScriptData = inlineScripts.map(script => ({
+            content: script.textContent || "",
+            isConfig: script.textContent?.includes("tailwind.config") || false
+        }));
+        
+        // Remove all resources from DOM (we'll add them back in correct order)
+        [...externalStylesheets, ...externalScripts, ...inlineScripts].forEach(resource => {
+            resource.remove();
         });
 
-        doc.open();
-        doc.write(htmlWithoutScripts);
-        doc.close();
-
-        // Function to load external scripts sequentially, then execute inline scripts
-        const loadScriptsSequentially = (scripts: HTMLScriptElement[], index: number = 0) => {
-            if (index >= scripts.length) {
-                // All external scripts loaded, now execute inline scripts
-                inlineScripts.forEach((script) => {
-                    const newScript = doc.createElement("script");
-                    newScript.textContent = script.textContent || "";
-                    doc.body.appendChild(newScript);
-                });
-                
-                requestAnimationFrame(adjustIframeSize);
-                setTimeout(adjustIframeSize, 100);
+        // Function to load external stylesheets sequentially
+        const loadStylesheetsSequentially = (stylesheets: typeof stylesheetData, index: number = 0) => {
+            if (index >= stylesheets.length) {
+                // All stylesheets loaded, now load scripts
+                loadScriptsSequentially(scriptData);
                 return;
             }
 
-            const script = scripts[index];
-            const src = script.getAttribute("src");
-            if (src) {
+            const linkData = stylesheets[index];
+            if (linkData.href) {
+                const existingLink = doc.querySelector(`link[href="${linkData.href}"]`);
+                if (!existingLink) {
+                    const newLink = doc.createElement("link");
+                    newLink.rel = linkData.rel;
+                    newLink.href = linkData.href;
+                    newLink.onload = () => {
+                        loadStylesheetsSequentially(stylesheets, index + 1);
+                    };
+                    newLink.onerror = () => {
+                        console.warn(`Failed to load stylesheet: ${linkData.href}`);
+                        loadStylesheetsSequentially(stylesheets, index + 1);
+                    };
+                    doc.head.appendChild(newLink);
+                } else {
+                    loadStylesheetsSequentially(stylesheets, index + 1);
+                }
+            } else {
+                loadStylesheetsSequentially(stylesheets, index + 1);
+            }
+        };
+
+        // Function to load external scripts sequentially, then execute inline scripts
+        const loadScriptsSequentially = (scripts: typeof scriptData, index: number = 0) => {
+            if (index >= scripts.length) {
+                // All external scripts loaded, now execute inline scripts
+                // Execute inline scripts in order
+                inlineScriptData.forEach((inlineData) => {
+                    const newScript = doc.createElement("script");
+                    newScript.textContent = inlineData.content;
+                    // Append to head if it's a config script, otherwise to body
+                    if (inlineData.isConfig) {
+                        doc.head.appendChild(newScript);
+                    } else {
+                        doc.body.appendChild(newScript);
+                    }
+                });
+                
+                // Wait a bit for scripts to execute, then adjust size
+                requestAnimationFrame(() => {
+                    setTimeout(adjustIframeSize, 50);
+                    setTimeout(adjustIframeSize, 200);
+                    setTimeout(adjustIframeSize, 500);
+                });
+                return;
+            }
+
+            const currentScript = scripts[index];
+            if (currentScript.src) {
                 // Check if script already exists
-                const existingScript = doc.querySelector(`script[src="${src}"]`);
+                const existingScript = doc.querySelector(`script[src="${currentScript.src}"]`);
                 if (!existingScript) {
                     const newScript = doc.createElement("script");
-                    newScript.src = src;
+                    newScript.src = currentScript.src;
+                    newScript.async = currentScript.async;
+                    newScript.defer = currentScript.defer;
                     newScript.onload = () => {
                         loadScriptsSequentially(scripts, index + 1);
                     };
                     newScript.onerror = () => {
-                        console.warn(`Failed to load script: ${src}`);
+                        console.warn(`Failed to load script: ${currentScript.src}`);
                         loadScriptsSequentially(scripts, index + 1);
                     };
                     doc.head.appendChild(newScript);
@@ -244,19 +323,27 @@ export default function PreviewRenderer({ html, css, onBack }: PreviewRendererPr
             }
         };
 
-        // Start loading external scripts
-        if (externalScripts.length > 0) {
-            loadScriptsSequentially(externalScripts);
+        // Start loading resources: stylesheets first, then scripts
+        if (stylesheetData.length > 0) {
+            loadStylesheetsSequentially(stylesheetData);
+        } else if (scriptData.length > 0) {
+            loadScriptsSequentially(scriptData);
         } else {
-            // No external scripts, just execute inline scripts
-            inlineScripts.forEach((script) => {
+            // No external resources, just execute inline scripts
+            inlineScriptData.forEach((scriptData) => {
                 const newScript = doc.createElement("script");
-                newScript.textContent = script.textContent || "";
-                doc.body.appendChild(newScript);
+                newScript.textContent = scriptData.content;
+                if (scriptData.isConfig) {
+                    doc.head.appendChild(newScript);
+                } else {
+                    doc.body.appendChild(newScript);
+                }
             });
             
-            requestAnimationFrame(adjustIframeSize);
-            setTimeout(adjustIframeSize, 100);
+            requestAnimationFrame(() => {
+                setTimeout(adjustIframeSize, 50);
+                setTimeout(adjustIframeSize, 200);
+            });
         }
 
         const resizeHandler = () => adjustIframeSize();
