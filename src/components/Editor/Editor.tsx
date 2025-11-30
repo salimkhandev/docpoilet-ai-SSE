@@ -7,6 +7,7 @@ import "grapesjs/dist/css/grapes.min.css";
 import { useEffect, useState } from "react";
 import { useAIState } from "../../contexts/AIStateContext";
 import { defaultHtml } from "../../data/defaultHtml";
+import { profileAvatarTemplate, resumeTemplate1Full, resumeTemplate2Full } from "../../data/resume-templates/templateExports";
 import PreviewRenderer from "./PreviewRenderer";
 
 export default function TailwindGrapes() {
@@ -1275,17 +1276,27 @@ export default function TailwindGrapes() {
       `,
     });
 
-    // Profile avatar block with Tailwind styles
+    // Profile avatar block with Tailwind styles - using template HTML
     editor.BlockManager.add("tailwind-profile-avatar", {
       label: "Profile Avatar",
       category: "Tailwind",
-      content: {
-        type: "image",
-        // Tailwind classes for a circular, cover-fit image avatar
-        attributes: { class: "w-24 h-24 rounded-full object-cover" },
-        // Placeholder image; replace via trait panel or double-click
-        src: "https://via.placeholder.com/240x240.png?text=Avatar",
-      },
+      content: profileAvatarTemplate,
+    });
+
+    editor.BlockManager.add("resume-template-1", {
+      label: "Resume Template 1 (Full)",
+      category: "Templates",
+      content: resumeTemplate1Full,
+      media: '<img src="/man.jpg" alt="Resume Template 2" style="max-width: 100%; height: auto; object-fit: cover; border-radius: 4px;" />',
+      activate: true,
+    });
+    // Full Resume Template 2 - Complete template from HTML file
+    editor.BlockManager.add("resume-template-2", {
+      label: "Resume Template 2 (Full)",
+      category: "Templates",
+      content: resumeTemplate2Full,
+      media: '<img src="/man.jpg" alt="Resume Template 2" style="max-width: 100%; height: auto; object-fit: cover; border-radius: 4px;" />',
+      activate: true,
     });
 
     return () => {

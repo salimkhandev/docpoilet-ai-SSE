@@ -78,7 +78,7 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
         // Render accumulated non-list text with bold parsing
         const textContent = nonListParts.join('\n');
         parts.push(
-          <div key={`text-${partKey++}`} className="text-[15px] leading-7 whitespace-pre-wrap">
+          <div key={`text-${partKey++}`} className="text-[15px] whitespace-pre-wrap">
             {parseBold(textContent)}
           </div>
         );
@@ -90,9 +90,9 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
       if (inList && listItems.length > 0) {
         // Render list with bold parsing in each item
         parts.push(
-          <ul key={`list-${partKey++}`} className="list-disc list-inside my-2 space-y-1">
+          <ul key={`list-${partKey++}`} className="list-disc list-inside">
             {listItems.map((item, i) => (
-              <li key={i} className="text-[15px] leading-7">
+              <li key={i} className="text-[15px] ">
                 {parseBold(item)}
               </li>
             ))}
@@ -110,9 +110,9 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
   // Handle remaining list items
   if (inList && listItems.length > 0) {
     parts.push(
-      <ul key={`list-${partKey++}`} className="list-disc list-inside my-2 space-y-1">
+      <ul key={`list-${partKey++}`} className="list-disc list-inside">
         {listItems.map((item, i) => (
-          <li key={i} className="text-[15px] leading-7">
+          <li key={i} className="text-[15px]">
             {parseBold(item)}
           </li>
         ))}
@@ -124,13 +124,13 @@ const parseMarkdown = (text: string): React.ReactNode[] => {
   if (nonListParts.length > 0) {
     const textContent = nonListParts.join('\n');
     parts.push(
-      <div key={`text-${partKey++}`} className="text-[15px] leading-7 whitespace-pre-wrap">
+      <div key={`text-${partKey++}`} className="text-[15px] whitespace-pre-wrap">
         {parseBold(textContent)}
       </div>
     );
   }
   
-  return parts.length > 0 ? parts : [<div key="text-default" className="text-[15px] leading-7 whitespace-pre-wrap">{text}</div>];
+  return parts.length > 0 ? parts : [<div key="text-default" className="text-[15px] whitespace-pre-wrap">{text}</div>];
 };
 
 // Parse and format message text with code block detection

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+export const resumeTemplate1Full = `<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -637,4 +637,4 @@
   </div>
 </body>
 
-</html>
+</html>`
