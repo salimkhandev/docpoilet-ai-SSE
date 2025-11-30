@@ -384,7 +384,7 @@ export async function POST(req: Request) {
         }
         return;
       }
-
+// 
       const script = scripts[index];
       try {
         // Check if script already exists
