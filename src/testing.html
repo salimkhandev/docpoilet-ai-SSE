@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JavaScript Static Particles with Cartoon Icons</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body class="m-0 p-0">
+
+    <div class="relative w-full h-screen bg-gradient-to-br from-slate-900 via-sky-900 to-emerald-900 overflow-hidden">
+
+        <div id="particles-js" class="absolute inset-0"></div>
+
+        <div
+            class="relative z-10 flex flex-col items-center justify-center h-full text-white px-4 text-center space-y-6">
+
+            <div class="flex items-center gap-6 mb-2">
+
+                <!-- code icon -->
+                <svg class="w-10 h-10 text-yellow-300" fill="none" stroke="currentColor" stroke-width="2"
+                    viewBox="0 0 24 24">
+                    <path d="M8 16l-4-4 4-4" />
+                    <path d="M16 8l4 4-4 4" />
+                    <path d="M12 4l-1.5 16" />
+                </svg>
+
+                <!-- bolt icon -->
+                <svg class="w-10 h-10 text-emerald-300" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M11 21l1-8H7l6-14v8h4l-6 14z" />
+                </svg>
+
+                <!-- terminal icon -->
+                <svg class="w-10 h-10 text-sky-300" fill="none" stroke="currentColor" stroke-width="2"
+                    viewBox="0 0 24 24">
+                    <path d="M4 17l6-6-6-6" />
+                    <path d="M12 19h8" />
+                </svg>
+
+            </div>
+
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-wide">
+                JavaScript Universe
+            </h1>
+
+            <p class="text-lg md:text-2xl max-w-2xl opacity-90">
+                JavaScript turns simple web pages into interactive experiences from small animations to full single page
+                apps.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mt-4">
+
+                <!-- card 1 -->
+                <div class="bg-white/10 border border-white/10 rounded-xl p-4 backdrop-blur-sm">
+                    <div class="flex flex-col items-center space-y-2">
+
+                        <!-- browser icon -->
+                        <svg class="w-10 h-10 text-sky-300" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="16" rx="2" />
+                            <path d="M3 8h18" />
+                        </svg>
+
+                        <h2 class="font-semibold text-lg">In the Browser</h2>
+                        <p class="text-sm opacity-80">
+                            DOM, events, animations, JavaScript powers the browser.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- card 2 -->
+                <div class="bg-white/10 border border-white/10 rounded-xl p-4 backdrop-blur-sm">
+                    <div class="flex flex-col items-center space-y-2">
+
+                        <!-- server icon -->
+                        <svg class="w-10 h-10 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="6" rx="1" />
+                            <rect x="3" y="14" width="18" height="6" rx="1" />
+                        </svg>
+
+                        <h2 class="font-semibold text-lg">On the Server</h2>
+                        <p class="text-sm opacity-80">
+                            Node.js makes JavaScript run on backend and APIs.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- card 3 -->
+                <div class="bg-white/10 border border-white/10 rounded-xl p-4 backdrop-blur-sm">
+                    <div class="flex flex-col items-center space-y-2">
+
+                        <!-- smartphone icon -->
+                        <svg class="w-10 h-10 text-yellow-300" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <rect x="7" y="2" width="10" height="20" rx="2" />
+                            <circle cx="12" cy="18" r="1" />
+                        </svg>
+
+                        <h2 class="font-semibold text-lg">Everywhere</h2>
+                        <p class="text-sm opacity-80">
+                            Web, mobile, desktop, IoT, one language for all.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 mt-4 text-sm opacity-70">
+                <!-- heart icon -->
+                <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path
+                        d="M12 21s-6-4.5-9-8.5C-1 8.5 2.5 3 7 3c2.5 0 4 1.5 5 3.5C13 4.5 14.5 3 17 3c4.5 0 8 5.5 4 9.5-3 4-9 8.5-9 8.5z" />
+                </svg>
+
+                <span>Crafted with JavaScript, particles.js, Tailwind and SVG icons.</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Unsplash API Images Section -->
+    <div class="relative z-10 mt-8 px-4 pb-8">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-2xl font-bold text-white mb-4 text-center">Unsplash API Example</h2>
+            <div id="unsplash-gallery" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="col-span-full text-center text-white/70 p-4">
+                    <p>Loading images...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Unsplash API Configuration
+        const UNSPLASH_ACCESS_KEY = '-q2SN1yZDCFvR08DovfTXgTxCZ4q73tqXH_Pz1Jsoik';
+        
+        // Fetch images from Unsplash
+        async function loadUnsplashImages() {
+            const gallery = document.getElementById('unsplash-gallery');
+            if (!gallery) {
+                console.error('Gallery element not found');
+                return;
+            }
+            
+            try {
+                const query = 'nature'; // Search query
+                const count = 6; // Number of images to fetch
+                
+                // Use the correct Unsplash API endpoint with client_id as query parameter
+                const url = `https://api.unsplash.com/photos/random?client_id=${UNSPLASH_ACCESS_KEY}&query=${query}&count=${count}&orientation=landscape`;
+                
+                console.log('Fetching images from Unsplash...', url);
+                
+                const response = await fetch(url);
+                
+                console.log('Response status:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', errorText);
+                    throw new Error(`Failed to fetch images: ${response.status} ${response.statusText}`);
+                }
+                
+                const images = await response.json();
+                console.log('Images received:', images);
+                
+                if (!Array.isArray(images)) {
+                    throw new Error('Invalid response format from Unsplash API');
+                }
+                
+                if (images.length === 0) {
+                    gallery.innerHTML = `
+                        <div class="col-span-full text-center text-white/70 p-4">
+                            <p>No images found. Try a different search query.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                gallery.innerHTML = images.map((image) => {
+                    const imageUrl = image.urls?.small || image.urls?.regular || image.urls?.thumb || '';
+                    const altText = image.alt_description || image.description || 'Unsplash image';
+                    const photographerName = image.user?.name || 'Unknown';
+                    const photographerLink = image.links?.html || '#';
+                    const description = image.description || image.alt_description || 'Beautiful image from Unsplash';
+                    
+                    return `
+                        <div class="bg-white/10 border border-white/20 rounded-lg overflow-hidden backdrop-blur-sm hover:bg-white/20 transition">
+                            <img 
+                                src="${imageUrl}" 
+                                alt="${altText}"
+                                class="w-full h-48 object-cover"
+                                loading="lazy"
+                                onerror="this.src='https://via.placeholder.com/400x300?text=Image+Error'"
+                            />
+                            <div class="p-3">
+                                <p class="text-white text-sm font-semibold truncate">
+                                    ${photographerName}
+                                </p>
+                                <p class="text-white/70 text-xs mt-1 line-clamp-2">
+                                    ${description}
+                                </p>
+                                <a 
+                                    href="${photographerLink}" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    class="text-sky-300 text-xs hover:underline mt-2 inline-block"
+                                >
+                                    View on Unsplash →
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                console.log('Images loaded successfully');
+            } catch (error) {
+                console.error('Error loading Unsplash images:', error);
+                if (gallery) {
+                    gallery.innerHTML = `
+                        <div class="col-span-full text-center text-white/70 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+                            <p class="font-semibold mb-2">Failed to load images</p>
+                            <p class="text-sm">Error: ${error.message}</p>
+                            <p class="text-xs mt-2 opacity-70">Check browser console for more details</p>
+                            <p class="text-xs mt-1 opacity-70">Make sure your Unsplash API key is valid and has proper permissions</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        // Initialize particles
+        particlesJS("particles-js", {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: "#ffffff" },
+                shape: { type: "circle" },
+                opacity: { value: 0.5 },
+                size: { value: 3, random: true },
+                line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.3, width: 1 },
+                move: { enable: false, speed: 0 }
+            },
+            interactivity: { detect_on: "canvas", events: { resize: true } },
+            retina_detect: true
+        });
+        
+        // Load Unsplash images when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadUnsplashImages);
+        } else {
+            // DOM is already ready
+            loadUnsplashImages();
+        }
+    </script>
+
+</body>
+
+</html>

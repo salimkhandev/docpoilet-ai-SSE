@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+  <div class="w-full max-w-md bg-white p-4 rounded-xl shadow">
+    <h2 class="text-center text-lg font-semibold mb-4">Simple Chart</h2>
+
+    <canvas id="myChart" class="w-full h-64"></canvas>
+  </div>
+
+  <script>
+    const ctx = document.getElementById("myChart")
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: ["A", "B", "C"],
+        datasets: [
+          {
+            label: "Values",
+            data: [10, 20, 30]
+          }
+        ]
+      }
+    })
+  </script>
+
+</body>
+
+</html>
