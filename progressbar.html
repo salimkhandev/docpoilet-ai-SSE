@@ -3,225 +3,531 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Simple Website with All Navs</title>
+  <title>Node.js Built-in fetch vs Undici Agent – Deep Comparison</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Icons (Heroicons via SVG + simple usage) -->
+  <!-- Icons (Heroicons via SVG in markup) -->
+  <!-- Syntax highlighting (Prism) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
   <style>
-    /* A4 page-like container */
+    @page {
+      size: A4;
+      margin: 20mm;
+    }
+
     body {
-      background: #e5e7eb;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
   </style>
 </head>
 
-<body class="min-h-screen flex items-center justify-center">
-  <div class="bg-white shadow-xl w-full max-w-5xl min-h-[842px] max-h-[842px] overflow-y-auto p-6 md:p-10 rounded-lg">
-    <!-- TOP NAVBAR -->
-    <header class="border-b pb-4 mb-6">
-      <nav class="flex items-center justify-between">
-        <!-- Logo -->
-        <div class="flex items-center space-x-2">
-          <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
-            S
-          </div>
-          <span class="font-semibold text-lg tracking-wide">SimpleSite</span>
-        </div>
-
-        <!-- Center Nav Links -->
-        <ul class="hidden md:flex items-center space-x-6 text-sm font-medium text-gray-700">
-          <li><a href="#home" class="hover:text-indigo-600">Home</a></li>
-          <li><a href="#about" class="hover:text-indigo-600">About</a></li>
-          <li><a href="#services" class="hover:text-indigo-600">Services</a></li>
-          <li><a href="#blog" class="hover:text-indigo-600">Blog</a></li>
-          <li><a href="#contact" class="hover:text-indigo-600">Contact</a></li>
-        </ul>
-
-        <!-- Right Side (Buttons) -->
-        <div class="hidden md:flex items-center space-x-3">
-          <a href="#login" class="text-sm font-medium text-gray-700 hover:text-indigo-600">Log in</a>
-          <a href="#signup"
-            class="px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
-            Sign up
-          </a>
-        </div>
-
-        <!-- Mobile Menu Icon (dummy) -->
-        <button
-          class="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-300 text-gray-700">
-          ☰
-        </button>
-      </nav>
-    </header>
-
-    <div class="flex gap-6">
-      <!-- SIDEBAR NAV -->
-      <aside class="hidden md:block w-52 border-r pr-4">
-        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-          Sidebar Nav
-        </h2>
-        <nav class="space-y-1 text-sm">
-          <a href="#home" class="flex items-center px-2 py-1.5 rounded-md bg-indigo-50 text-indigo-700 font-medium">
-            <span class="mr-2">🏠</span> Dashboard
-          </a>
-          <a href="#about" class="flex items-center px-2 py-1.5 rounded-md text-gray-700 hover:bg-gray-100">
-            <span class="mr-2">👤</span> Profile
-          </a>
-          <a href="#services" class="flex items-center px-2 py-1.5 rounded-md text-gray-700 hover:bg-gray-100">
-            <span class="mr-2">🛠️</span> Services
-          </a>
-          <a href="#blog" class="flex items-center px-2 py-1.5 rounded-md text-gray-700 hover:bg-gray-100">
-            <span class="mr-2">📰</span> Articles
-          </a>
-          <a href="#contact" class="flex items-center px-2 py-1.5 rounded-md text-gray-700 hover:bg-gray-100">
-            <span class="mr-2">📨</span> Messages
-          </a>
-          <a href="#settings" class="flex items-center px-2 py-1.5 rounded-md text-gray-700 hover:bg-gray-100">
-            <span class="mr-2">⚙️</span> Settings
-          </a>
-        </nav>
-      </aside>
-
-      <!-- MAIN CONTENT -->
-      <main class="flex-1 space-y-8 text-gray-800">
-        <!-- SECTION NAV (IN-PAGE TABS STYLE) -->
-        <section id="home" class="border rounded-lg p-4">
-          <h1 class="text-xl font-bold mb-3 flex items-center">
-            <span class="mr-2">🏡</span> Home
+<body class="bg-slate-100 text-slate-900 antialiased">
+  <div class="min-h-screen flex justify-center py-10">
+    <main class="bg-white shadow-xl rounded-xl w-full max-w-5xl px-10 py-10">
+      <!-- Header -->
+      <header
+        class="border-b border-slate-200 pb-6 mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
+              <!-- Icon: arrows -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.8">
+                <path d="M7 7h10M7 7l3-3M7 7l3 3M17 17H7M17 17l-3-3M17 17l-3 3" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </span>
+            Node.js built-in fetch vs Undici Agent
           </h1>
-          <p class="text-sm text-gray-600 mb-4">
-            This simple website demonstrates different types of navigation:
-            top navigation bar, sidebar navigation, in-page section navigation,
-            and footer navigation.
+          <p class="text-sm text-slate-600 mt-1">
+            Deep comparison, trade-offs, and when to use which in Node.js / Next.js projects.
           </p>
+        </div>
+        <div class="flex flex-col items-start md:items-end gap-1 text-xs text-slate-500">
+          <span class="font-semibold text-slate-700">Docpilot-AI Technical Notes</span>
+          <span>Topic: HTTP clients &amp; connection management</span>
+        </div>
+      </header>
 
-          <div class="border-b mb-4">
-            <nav class="flex flex-wrap text-sm font-medium">
-              <a href="#home" class="px-3 py-2 border-b-2 border-indigo-600 text-indigo-600">
-                Overview
-              </a>
-              <a href="#about"
-                class="px-3 py-2 border-b-2 border-transparent hover:border-gray-300 hover:text-gray-800">
-                About
-              </a>
-              <a href="#services"
-                class="px-3 py-2 border-b-2 border-transparent hover:border-gray-300 hover:text-gray-800">
-                Services
-              </a>
-              <a href="#blog" class="px-3 py-2 border-b-2 border-transparent hover:border-gray-300 hover:text-gray-800">
-                Blog
-              </a>
-              <a href="#contact"
-                class="px-3 py-2 border-b-2 border-transparent hover:border-gray-300 hover:text-gray-800">
-                Contact
-              </a>
-            </nav>
+      <!-- Overview -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-slate-900 flex items-center gap-2 mb-3">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+            <!-- Icon: info -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8h.01M11 11h1v4h1" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          High-level Overview
+        </h2>
+        <p class="text-sm leading-relaxed text-slate-700 mb-3">
+          In modern Node.js (18+) and frameworks like Next.js, you will often see two related concepts:
+          the <span class="font-mono bg-slate-100 px-1 rounded">fetch</span> API and Undici&apos;s
+          <span class="font-mono bg-slate-100 px-1 rounded">Agent</span>. They are not direct competitors:
+          they operate at different abstraction levels and often work together.
+        </p>
+        <div class="grid md:grid-cols-2 gap-4 text-sm">
+          <div class="border border-slate-200 rounded-lg p-4">
+            <h3 class="font-semibold text-slate-900 mb-1 flex items-center gap-1">
+              <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-50 text-emerald-600">
+                <!-- Icon: cloud -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8">
+                  <path d="M5 15a4 4 0 0 1 2-7.465A5.5 5.5 0 0 1 19 10.5 3.5 3.5 0 0 1 18.5 17H7a3 3 0 0 1-2-2z"
+                    stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+              Built-in fetch
+            </h3>
+            <ul class="list-disc list-inside text-slate-700 space-y-1">
+              <li>High-level, browser-style HTTP API.</li>
+              <li>Used directly to make requests and read responses.</li>
+              <li>Integrated with Next.js caching and data fetching.</li>
+              <li>Great for most application-level HTTP calls.</li>
+            </ul>
+          </div>
+          <div class="border border-slate-200 rounded-lg p-4">
+            <h3 class="font-semibold text-slate-900 mb-1 flex items-center gap-1">
+              <span class="inline-flex h-5 w-5 items-center justify-center rounded bg-sky-50 text-sky-600">
+                <!-- Icon: network -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8">
+                  <path
+                    d="M12 3v4M12 17v4M5 12h4M15 12h4M7.8 7.8l2.8 2.8M13.4 13.4l2.8 2.8M7.8 16.2l2.8-2.8M13.4 10.6l2.8-2.8"
+                    stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+              Undici Agent
+            </h3>
+            <ul class="list-disc list-inside text-slate-700 space-y-1">
+              <li>Low-level connection manager / pool.</li>
+              <li>Controls keep-alive, concurrency, timeouts, TLS, proxies.</li>
+              <li>Used under the hood by HTTP clients (including Node fetch).</li>
+              <li>Best when you need fine-grained control and tuning.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 1: What each one is -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+            <!-- Icon: book -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.8">
+              <path d="M5 4h7a4 4 0 0 1 4 4v12H9a4 4 0 0 0-4-4V4z" />
+              <path d="M15 4h1a3 3 0 0 1 3 3v13h-4" />
+            </svg>
+          </span>
+          1. What each one is conceptually
+        </h2>
+
+        <div class="space-y-4 text-sm leading-relaxed text-slate-700">
+          <div class="border border-slate-200 rounded-lg p-4">
+            <h3 class="font-semibold text-slate-900 mb-1">Built-in fetch (Node 18+ / Next.js)</h3>
+            <p>
+              <span class="font-mono bg-slate-100 px-1 rounded">fetch</span> is a high-level HTTP API modeled
+              after the browser&apos;s fetch. You use it to describe <span class="italic">what</span> request you
+              want to make (URL, method, headers, body) and then read the response.
+            </p>
+            <pre class="language-javascript mt-3 rounded-lg bg-slate-900 text-slate-100 text-xs p-3 overflow-auto"><code class="language-javascript">
+// Node.js or Next.js server-side
+const res = await fetch("https://api.example.com/users", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ name: "Alice" }),
+});
+
+if (!res.ok) {
+  throw new Error(`Request failed: ${res.status}`);
+}
+
+const data = await res.json();
+console.log(data);
+</code></pre>
+            <p class="mt-2">
+              In Next.js (especially the App Router), <span class="font-mono bg-slate-100 px-1 rounded">fetch</span>
+              is also tied into caching, revalidation, and deduplication.
+            </p>
           </div>
 
-          <p class="text-sm leading-relaxed">
-            Use the links above or in the top/side navigation to jump to
-            different sections of this page. This is a basic single-page layout
-            that you can extend into a full website.
-          </p>
-        </section>
+          <div class="border border-slate-200 rounded-lg p-4">
+            <h3 class="font-semibold text-slate-900 mb-1">Undici Agent</h3>
+            <p>
+              Undici&apos;s <span class="font-mono bg-slate-100 px-1 rounded">Agent</span> is a low-level
+              connection manager. It does <span class="italic">not</span> represent a single HTTP request.
+              Instead, it manages how connections are created, reused, and closed for many requests.
+            </p>
+            <ul class="list-disc list-inside mt-2 space-y-1">
+              <li>Connection pooling and reuse (keep-alive).</li>
+              <li>Maximum concurrent connections per origin.</li>
+              <li>Socket timeouts and idle timeouts.</li>
+              <li>TLS options, proxies, and other transport-level settings.</li>
+            </ul>
+            <p class="mt-2">
+              You typically pass an <span class="font-mono bg-slate-100 px-1 rounded">Agent</span> into a
+              higher-level client (like Undici&apos;s <span class="font-mono bg-slate-100 px-1 rounded">fetch</span>
+              or <span class="font-mono bg-slate-100 px-1 rounded">request</span>) rather than using it alone.
+            </p>
+          </div>
+        </div>
+      </section>
 
-        <section id="about" class="border rounded-lg p-4">
-          <h2 class="text-lg font-semibold mb-2 flex items-center">
-            <span class="mr-2">👋</span> About
-          </h2>
-          <p class="text-sm text-gray-700 leading-relaxed">
-            This layout is built with Tailwind CSS and is designed to look like
-            an A4 document. It includes:
+      <!-- Section 2: How they relate -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+            <!-- Icon: link -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.8">
+              <path
+                d="M10.5 13.5L9 15a3 3 0 0 1-4.24-4.24l2-2A3 3 0 0 1 11 9m2.5 1.5L15 9a3 3 0 0 1 4.24 4.24l-2 2A3 3 0 0 1 13 15"
+                stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          2. How built-in fetch and Undici Agent relate
+        </h2>
+        <p class="text-sm text-slate-700 leading-relaxed mb-3">
+          In modern Node.js, the built-in <span class="font-mono bg-slate-100 px-1 rounded">fetch</span> is
+          implemented on top of Undici. That means:
+        </p>
+        <ul class="list-disc list-inside text-sm text-slate-700 space-y-1 mb-3">
+          <li><span class="font-mono bg-slate-100 px-1 rounded">fetch</span> is the high-level API you call.</li>
+          <li>Undici (including <span class="font-mono bg-slate-100 px-1 rounded">Agent</span>) is the low-level engine
+            that actually manages sockets and HTTP details.</li>
+        </ul>
+        <p class="text-sm text-slate-700">
+          In many cases, you can rely on the default Agent behavior that Node provides. You only need to
+          configure a custom <span class="font-mono bg-slate-100 px-1 rounded">Agent</span> when you have
+          specific performance, scaling, or networking requirements.
+        </p>
+      </section>
+
+      <!-- Section 3: Detailed comparison table -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+            <!-- Icon: table -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M3 10h18M9 4v16" />
+            </svg>
+          </span>
+          3. Detailed comparison
+        </h2>
+
+        <div class="overflow-x-auto text-xs md:text-sm">
+          <table class="min-w-full border border-slate-200 rounded-lg overflow-hidden">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-3 py-2 text-left text-slate-700 font-semibold border-b border-slate-200">Aspect</th>
+                <th class="px-3 py-2 text-left text-slate-700 font-semibold border-b border-slate-200">Built-in fetch
+                </th>
+                <th class="px-3 py-2 text-left text-slate-700 font-semibold border-b border-slate-200">Undici Agent</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr class="bg-white">
+                <td class="px-3 py-2 font-medium text-slate-800">Abstraction level</td>
+                <td class="px-3 py-2 text-slate-700">High-level request/response API.</td>
+                <td class="px-3 py-2 text-slate-700">Low-level connection and socket manager.</td>
+              </tr>
+              <tr class="bg-slate-50/40">
+                <td class="px-3 py-2 font-medium text-slate-800">Primary responsibility</td>
+                <td class="px-3 py-2 text-slate-700">Describe HTTP calls and consume responses.</td>
+                <td class="px-3 py-2 text-slate-700">Control pooling, keep-alive, concurrency, timeouts.</td>
+              </tr>
+              <tr class="bg-white">
+                <td class="px-3 py-2 font-medium text-slate-800">Typical usage</td>
+                <td class="px-3 py-2 text-slate-700">Application code in Node/Next.js.</td>
+                <td class="px-3 py-2 text-slate-700">Infrastructure-level configuration in backend services.</td>
+              </tr>
+              <tr class="bg-slate-50/40">
+                <td class="px-3 py-2 font-medium text-slate-800">API ergonomics</td>
+                <td class="px-3 py-2 text-slate-700">Simple, promise-based, browser-like.</td>
+                <td class="px-3 py-2 text-slate-700">Configuration object with many tuning knobs.</td>
+              </tr>
+              <tr class="bg-white">
+                <td class="px-3 py-2 font-medium text-slate-800">Connection pooling</td>
+                <td class="px-3 py-2 text-slate-700">Handled automatically via underlying Agent.</td>
+                <td class="px-3 py-2 text-slate-700">Explicitly configurable (max connections, etc.).</td>
+              </tr>
+              <tr class="bg-slate-50/40">
+                <td class="px-3 py-2 font-medium text-slate-800">Timeout control</td>
+                <td class="px-3 py-2 text-slate-700">Via options (e.g., signal/AbortController) and environment.</td>
+                <td class="px-3 py-2 text-slate-700">Fine-grained socket and idle timeouts.</td>
+              </tr>
+              <tr class="bg-white">
+                <td class="px-3 py-2 font-medium text-slate-800">Proxy / TLS</td>
+                <td class="px-3 py-2 text-slate-700">Possible but less explicit; often via environment or custom agent.
+                </td>
+                <td class="px-3 py-2 text-slate-700">Designed to configure TLS, proxies, and custom transports.</td>
+              </tr>
+              <tr class="bg-slate-50/40">
+                <td class="px-3 py-2 font-medium text-slate-800">Best suited for</td>
+                <td class="px-3 py-2 text-slate-700">Most app-level HTTP calls, especially in Next.js.</td>
+                <td class="px-3 py-2 text-slate-700">High-throughput services, microservices, gateways.</td>
+              </tr>
+              <tr class="bg-white">
+                <td class="px-3 py-2 font-medium text-slate-800">Learning curve</td>
+                <td class="px-3 py-2 text-slate-700">Very low (browser developers already know it).</td>
+                <td class="px-3 py-2 text-slate-700">Higher; requires understanding of HTTP connection behavior.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Section 4: When to use which (Node.js) -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+            <!-- Icon: server -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.8">
+              <rect x="4" y="4" width="16" height="6" rx="2" />
+              <rect x="4" y="14" width="16" height="6" rx="2" />
+              <path d="M8 7h.01M8 17h.01" />
+            </svg>
+          </span>
+          4. When to use which in a Node.js backend
+        </h2>
+
+        <div class="grid md:grid-cols-2 gap-4 text-sm leading-relaxed text-slate-700">
+          <div class="border border-emerald-200 bg-emerald-50/60 rounded-lg p-4">
+            <h3 class="font-semibold text-emerald-900 mb-1">Use built-in fetch by default when:</h3>
+            <ul class="list-disc list-inside space-y-1">
+              <li>You are building a typical REST/GraphQL backend or API consumer.</li>
+              <li>You want a simple, browser-like API for HTTP calls.</li>
+              <li>You do not have extreme throughput or connection tuning needs.</li>
+              <li>You prefer minimal configuration and good defaults.</li>
+            </ul>
+            <p class="mt-2">
+              For many Node.js services, using <span class="font-mono bg-slate-100 px-1 rounded">fetch</span> with
+              sensible timeouts and retries is enough.
+            </p>
+          </div>
+
+          <div class="border border-sky-200 bg-sky-50/60 rounded-lg p-4">
+            <h3 class="font-semibold text-sky-900 mb-1">Consider a custom Undici Agent when:</h3>
+            <ul class="list-disc list-inside space-y-1">
+              <li>You run a high-traffic microservice calling other services constantly.</li>
+              <li>You need to strictly control max concurrent connections per host.</li>
+              <li>You must tune socket timeouts, idle timeouts, or backpressure behavior.</li>
+              <li>You need advanced TLS or proxy configuration.</li>
+            </ul>
+            <p class="mt-2">
+              In these cases, you still often use <span class="font-mono bg-slate-100 px-1 rounded">fetch</span> for
+              the request API, but you plug in a custom <span class="font-mono bg-slate-100 px-1 rounded">Agent</span>
+              underneath.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 5: When to use which (Next.js) -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+            <!-- Icon: globe -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="9" />
+              <path
+                d="M3 12h18M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z" />
+            </svg>
+          </span>
+          5. When to use which in a Next.js project
+        </h2>
+
+        <div class="space-y-3 text-sm leading-relaxed text-slate-700">
+          <p>
+            In Next.js (especially with the App Router), the recommended way to do server-side HTTP calls is
+            to use the built-in <span class="font-mono bg-slate-100 px-1 rounded">fetch</span>. Next.js adds
+            features on top of it:
           </p>
-          <ul class="list-disc list-inside text-sm text-gray-700 mt-2 space-y-1">
-            <li>Top navigation bar with logo, links, and buttons.</li>
-            <li>Sidebar navigation for dashboard-style layouts.</li>
-            <li>In-page section navigation (tab-like links).</li>
-            <li>Footer navigation with secondary links.</li>
+          <ul class="list-disc list-inside space-y-1">
+            <li>Automatic request deduplication during a single render.</li>
+            <li>Caching and revalidation via options like <span class="font-mono bg-slate-100 px-1 rounded">next: {
+                revalidate }</span>.</li>
+            <li>Integration with server components and route handlers.</li>
           </ul>
-        </section>
 
-        <section id="services" class="border rounded-lg p-4">
-          <h2 class="text-lg font-semibold mb-2 flex items-center">
-            <span class="mr-2">🛠️</span> Services
-          </h2>
-          <p class="text-sm text-gray-700 mb-3">
-            Example service cards to show content under a section:
-          </p>
-          <div class="grid md:grid-cols-3 gap-4 text-sm">
-            <div class="border rounded-lg p-3">
-              <h3 class="font-semibold mb-1">Web Design</h3>
-              <p class="text-gray-600">
-                Clean and simple layouts with intuitive navigation.
-              </p>
-            </div>
-            <div class="border rounded-lg p-3">
-              <h3 class="font-semibold mb-1">Development</h3>
-              <p class="text-gray-600">
-                Modern front-end development using Tailwind CSS.
-              </p>
-            </div>
-            <div class="border rounded-lg p-3">
-              <h3 class="font-semibold mb-1">Consulting</h3>
-              <p class="text-gray-600">
-                Help you structure pages and navigation for your site.
-              </p>
-            </div>
+          <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/60">
+            <h3 class="font-semibold text-slate-900 mb-1">Typical Next.js usage</h3>
+            <pre class="language-javascript mt-2 rounded-lg bg-slate-900 text-slate-100 text-xs p-3 overflow-auto"><code class="language-javascript">
+// Example in a Next.js server component or route handler
+export default async function Page() {
+  const res = await fetch("https://api.example.com/posts", {
+    // Next.js-specific options
+    next: { revalidate: 60 }, // ISR: revalidate every 60 seconds
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch posts");
+  }
+
+  const posts = await res.json();
+  // ...render posts
+}
+</code></pre>
+            <p class="mt-2">
+              Here, you almost always stick with <span class="font-mono bg-slate-100 px-1 rounded">fetch</span>.
+              Only if you hit very specific performance or networking issues would you consider customizing
+              the underlying Agent.
+            </p>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section id="blog" class="border rounded-lg p-4">
-          <h2 class="text-lg font-semibold mb-2 flex items-center">
-            <span class="mr-2">📰</span> Blog
-          </h2>
-          <p class="text-sm text-gray-700">
-            You can turn each section into a separate page and reuse the same
-            navigation components across your website.
-          </p>
-        </section>
+      <!-- Section 6: Example with custom Agent (conceptual) -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+            <!-- Icon: wrench -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.8">
+              <path d="M14 3a4 4 0 0 0-4 4v1H7l-4 4 4 4h3v1a4 4 0 1 0 4-4h-1v-2h1a4 4 0 1 0 0-8z" />
+            </svg>
+          </span>
+          6. Conceptual example: tuning connections with an Agent
+        </h2>
 
-        <section id="contact" class="border rounded-lg p-4">
-          <h2 class="text-lg font-semibold mb-2 flex items-center">
-            <span class="mr-2">📬</span> Contact
-          </h2>
-          <form class="space-y-3 text-sm">
-            <div>
-              <label class="block text-gray-700 mb-1">Name</label>
-              <input type="text"
-                class="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-            </div>
-            <div>
-              <label class="block text-gray-700 mb-1">Email</label>
-              <input type="email"
-                class="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" />
-            </div>
-            <div>
-              <label class="block text-gray-700 mb-1">Message</label>
-              <textarea
-                class="w-full border rounded-md px-3 py-2 text-sm h-24 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
-            </div>
-            <button type="submit" class="px-4 py-2 rounded-md bg-indigo-600 text-white font-medium hover:bg-indigo-700">
-              Send Message
-            </button>
-          </form>
-        </section>
-      </main>
-    </div>
+        <p class="text-sm text-slate-700 leading-relaxed mb-2">
+          The exact API surface can vary by version, but conceptually you might:
+        </p>
 
-    <!-- FOOTER NAV -->
-    <footer
-      class="border-t mt-8 pt-4 text-xs text-gray-600 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-      <p>© 2025 SimpleSite. All rights reserved.</p>
-      <nav class="flex flex-wrap gap-3">
-        <a href="#home" class="hover:text-indigo-600">Home</a>
-        <a href="#about" class="hover:text-indigo-600">About</a>
-        <a href="#services" class="hover:text-indigo-600">Services</a>
-        <a href="#blog" class="hover:text-indigo-600">Blog</a>
-        <a href="#contact" class="hover:text-indigo-600">Contact</a>
-        <a href="#settings" class="hover:text-indigo-600">Settings</a>
-      </nav>
-    </footer>
+        <pre class="language-javascript rounded-lg bg-slate-900 text-slate-100 text-xs p-3 overflow-auto"><code class="language-javascript">
+// Pseudo-code style example (conceptual)
+import { Agent, fetch as undiciFetch } from "undici";
+
+// Create a custom Agent with tuned connection limits
+const agent = new Agent({
+  // Maximum concurrent sockets per origin
+  connections: 50,
+  // How long to keep idle sockets alive
+  keepAliveTimeout: 30_000,
+  // Maximum lifetime of a socket
+  maxLifetime: 300_000,
+  // ...other options like TLS, proxy, etc.
+});
+
+// Use this Agent for all calls to a specific backend
+async function callBackend(path) {
+  const res = await undiciFetch("https://backend.internal" + path, {
+    dispatcher: agent, // tell Undici to use this Agent
+  });
+
+  if (!res.ok) {
+    throw new Error(`Backend error: ${res.status}`);
+  }
+
+  return res.json();
+}
+</code></pre>
+
+        <p class="text-xs text-slate-600 mt-2">
+          This illustrates the idea: <span class="font-mono bg-slate-100 px-1 rounded">Agent</span> is about
+          how connections are managed, while <span class="font-mono bg-slate-100 px-1 rounded">fetch</span> is
+          about the request/response API.
+        </p>
+      </section>
+
+      <!-- Section 7: Pros & cons -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+            <!-- Icon: scale -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.8">
+              <path d="M12 3v3M6 7l-3 7h6l-3-7zm12 0l-3 7h6l-3-7zM3 14h6M15 14h6M12 6l-3 8h6l-3-8zM12 17v4" />
+            </svg>
+          </span>
+          7. Pros and cons summary
+        </h2>
+
+        <div class="grid md:grid-cols-2 gap-4 text-sm">
+          <div class="border border-slate-200 rounded-lg p-4">
+            <h3 class="font-semibold text-slate-900 mb-1">Built-in fetch</h3>
+            <p class="font-medium text-emerald-700 mb-1">Pros</p>
+            <ul class="list-disc list-inside text-slate-700 space-y-1 mb-2">
+              <li>Very easy to use; familiar to web developers.</li>
+              <li>Integrated with Next.js data fetching and caching.</li>
+              <li>Good defaults for many applications.</li>
+              <li>Unified API across browser and server.</li>
+            </ul>
+            <p class="font-medium text-rose-700 mb-1">Cons</p>
+            <ul class="list-disc list-inside text-slate-700 space-y-1">
+              <li>Less explicit control over low-level connection behavior.</li>
+              <li>Advanced tuning may require digging into underlying configuration.</li>
+            </ul>
+          </div>
+
+          <div class="border border-slate-200 rounded-lg p-4">
+            <h3 class="font-semibold text-slate-900 mb-1">Undici Agent</h3>
+            <p class="font-medium text-emerald-700 mb-1">Pros</p>
+            <ul class="list-disc list-inside text-slate-700 space-y-1 mb-2">
+              <li>Fine-grained control over pooling, timeouts, and concurrency.</li>
+              <li>Can significantly improve performance in high-load scenarios.</li>
+              <li>Essential for complex networking setups (proxies, custom TLS).</li>
+            </ul>
+            <p class="font-medium text-rose-700 mb-1">Cons</p>
+            <ul class="list-disc list-inside text-slate-700 space-y-1">
+              <li>More complex to configure and reason about.</li>
+              <li>Overkill for small or medium-scale applications.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 8: Practical decision guide -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+            <!-- Icon: compass -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M10 14l2-4 2 4-4-2z" />
+            </svg>
+          </span>
+          8. Quick decision guide
+        </h2>
+
+        <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/60 text-sm text-slate-800 space-y-2">
+          <p><span class="font-semibold">If you are building:</span></p>
+          <ul class="list-disc list-inside space-y-1">
+            <li>
+              A typical Next.js app or Node.js backend that calls a few external APIs:
+              <span class="font-semibold">use built-in fetch</span>.
+            </li>
+            <li>
+              A high-throughput microservice or gateway making thousands of requests per second:
+              <span class="font-semibold">use fetch + a tuned Undici Agent</span> (or a similar setup).
+            </li>
+            <li>
+              A system with strict networking constraints (corporate proxies, custom TLS, etc.):
+              <span class="font-semibold">configure an Agent</span> to match those requirements.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer
+        class="pt-4 mt-4 border-t border-slate-200 text-xs text-slate-500 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <span>Generated explanation: Node.js built-in fetch vs Undici Agent.</span>
+        <span>Feel free to modify the Tailwind classes to match your own documentation style.</span>
+      </footer>
+    </main>
   </div>
 </body>
 

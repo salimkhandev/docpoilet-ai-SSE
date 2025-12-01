@@ -384,6 +384,7 @@ export default function TailwindGrapes() {
               ...typeDef.model?.defaults,
               resizable: true,
               resizableText: true, // Allow resizing text content
+              editable: true, // Make sure text elements are editable by default
             },
           },
         });
@@ -407,6 +408,484 @@ export default function TailwindGrapes() {
 
     // Force Desktop device by default
     editor.setDevice("Desktop");
+
+    // Override getHtml to ensure latest DOM content is synced before export
+    const originalGetHtml = editor.getHtml.bind(editor);
+    editor.getHtml = function (opts?: any) {
+      console.log("📤 getHtml called - syncing all content first");
+
+      // Sync all heading content from DOM to model
+      const syncAllContent = (components: any) => {
+        components.each((component: any) => {
+          const tagName = component.get("tagName")?.toLowerCase();
+          const headingElements = ["h1", "h2", "h3", "h4", "h5", "h6"];
+
+          if (headingElements.includes(tagName)) {
+            const view = component.getView();
+            if (view && view.el) {
+              // Get current DOM content
+              const domContent = view.el.innerHTML;
+              const modelContent = component.get("content");
+
+              // Only update if different
+              if (domContent !== modelContent) {
+                component.set("content", domContent);
+                component.components(domContent);
+                console.log(`✅ Synced ${tagName} from DOM to model`);
+              }
+            }
+          }
+
+          // Recursively sync children
+          if (component.components && component.components().length > 0) {
+            syncAllContent(component.components());
+          }
+        });
+      };
+
+      const allComponents = editor.DomComponents.getComponents();
+      syncAllContent(allComponents);
+
+      // Now call original getHtml with synced content
+      return originalGetHtml(opts);
+    };
+
+    // Force wrap text nodes in headings to make them editable
+    const forceWrapTextNodes = (element: HTMLElement) => {
+      const textNodes: Node[] = [];
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+          // Accept text nodes that are NOT inside SVG and have actual content
+          if (node.parentElement?.closest("svg")) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          if (node.textContent?.trim()) {
+            return NodeFilter.FILTER_ACCEPT;
+          }
+          return NodeFilter.FILTER_REJECT;
+        },
+      });
+
+      let node;
+      while ((node = walker.nextNode())) {
+        textNodes.push(node);
+      }
+
+      // Wrap each text node in a span to make it editable
+      textNodes.forEach((textNode) => {
+        if (
+          textNode.parentElement?.tagName.toLowerCase() !== "span" ||
+          textNode.parentElement?.querySelector("svg")
+        ) {
+          const wrapper = document.createElement("span");
+          wrapper.className = "gjs-editable-text";
+          wrapper.setAttribute("data-gjs-editable", "true");
+          wrapper.textContent = textNode.textContent || "";
+          textNode.parentNode?.replaceChild(wrapper, textNode);
+        }
+      });
+    };
+
+    // Add double-click handler for heading elements
+    editor.on("component:dblclick", (component) => {
+      if (!component) return;
+      const tagName = component.get("tagName")?.toLowerCase();
+
+      // Handle heading elements specially
+      if (tagName && ["h1", "h2", "h3", "h4", "h5", "h6"].includes(tagName)) {
+        // Force text wrapping and enable editing
+        const view = component.getView();
+        if (view && view.el) {
+          // First, wrap any unwrapped text nodes
+          forceWrapTextNodes(view.el);
+
+          // Make all text spans editable
+          const textSpans = view.el.querySelectorAll("span.gjs-editable-text");
+          textSpans.forEach((span: Element) => {
+            if (span instanceof HTMLElement) {
+              span.contentEditable = "true";
+              span.style.cursor = "text";
+              span.style.outline = "none";
+            }
+          });
+
+          // Disable SVG interaction
+          const svgs = view.el.querySelectorAll("svg");
+          svgs.forEach((svg: Element) => {
+            if (svg instanceof SVGElement) {
+              svg.style.pointerEvents = "none";
+              svg.style.userSelect = "none";
+            }
+          });
+
+          const hasSvg = view.el.querySelector("svg");
+
+          if (hasSvg) {
+            console.log(
+              "📌 Complex heading with SVG - text nodes wrapped and made editable",
+            );
+
+            // Create floating edit buttons if they don't exist
+            if (!document.getElementById("complex-heading-edit-btn")) {
+              // Create container for buttons
+              const btnContainer = document.createElement("div");
+              btnContainer.id = "heading-edit-buttons";
+              btnContainer.style.position = "absolute";
+              btnContainer.style.zIndex = "10000";
+              btnContainer.style.display = "flex";
+              btnContainer.style.gap = "8px";
+
+              // Position the container near the heading
+              const rect = view.el.getBoundingClientRect();
+              const canvasRect =
+                editor.Canvas.getElement().getBoundingClientRect();
+
+              btnContainer.style.top = `${rect.bottom - canvasRect.top + 10}px`;
+              btnContainer.style.left = `${rect.left - canvasRect.left}px`;
+
+              // Create normal edit button
+              const editBtn = document.createElement("button");
+              editBtn.id = "complex-heading-edit-btn";
+              editBtn.innerHTML = "Edit Heading";
+              editBtn.style.background = "#4F46E5";
+              editBtn.style.color = "white";
+              editBtn.style.padding = "6px 12px";
+              editBtn.style.borderRadius = "4px";
+              editBtn.style.fontSize = "14px";
+              editBtn.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
+              editBtn.style.border = "none";
+              editBtn.style.cursor = "pointer";
+
+              // Create text extract button
+              const extractBtn = document.createElement("button");
+              extractBtn.id = "extract-heading-text-btn";
+              extractBtn.innerHTML = "Extract & Edit Text";
+              extractBtn.style.background = "#047857";
+              extractBtn.style.color = "white";
+              extractBtn.style.padding = "6px 12px";
+              extractBtn.style.borderRadius = "4px";
+              extractBtn.style.fontSize = "14px";
+              extractBtn.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
+              extractBtn.style.border = "none";
+              extractBtn.style.cursor = "pointer";
+
+              // Add buttons to container
+              btnContainer.appendChild(editBtn);
+              btnContainer.appendChild(extractBtn);
+
+              // Add click handler for normal edit
+              editBtn.addEventListener("click", () => {
+                // Remove the buttons
+                btnContainer.remove();
+
+                // Enable editing for the heading text
+                handleHeadingEdit(component);
+              });
+
+              // Add click handler for text extraction mode
+              extractBtn.addEventListener("click", () => {
+                // Remove the buttons
+                btnContainer.remove();
+
+                // Enable text extraction mode
+                handleHeadingTextExtraction(component);
+              });
+
+              // Add the container to the canvas
+              editor.Canvas.getBody().appendChild(btnContainer);
+
+              // Remove buttons when clicked elsewhere
+              document.addEventListener(
+                "click",
+                (e) => {
+                  if (
+                    e.target !== editBtn &&
+                    e.target !== extractBtn &&
+                    document.getElementById("heading-edit-buttons")
+                  ) {
+                    document.getElementById("heading-edit-buttons")?.remove();
+                  }
+                },
+                { once: true },
+              );
+            }
+            return;
+          }
+        }
+
+        // For any heading, enable direct text editing
+        handleHeadingEdit(component);
+      }
+    });
+
+    // Function to handle heading text editing
+    const handleHeadingEdit = (component: any) => {
+      // Mark component as being edited
+      component.set("_isBeingEdited", true);
+      component.set("editable", true);
+
+      // Focus and make contenteditable
+      const view = component.getView();
+      if (view && view.el) {
+        // Store original content
+        const originalContent = view.el.innerHTML;
+
+        // Force wrap text nodes before editing
+        forceWrapTextNodes(view.el);
+
+        // Make all editable text spans contenteditable
+        const editableSpans = view.el.querySelectorAll(
+          "span.gjs-editable-text",
+        );
+        editableSpans.forEach((span: Element) => {
+          if (span instanceof HTMLElement) {
+            span.contentEditable = "true";
+            span.addEventListener("input", () => {
+              // Sync on every input
+              const newContent = view.el.innerHTML;
+              component.set("content", newContent);
+              component.components(newContent);
+            });
+          }
+        });
+
+        // Focus on first editable span
+        const firstEditableSpan = view.el.querySelector(
+          "span.gjs-editable-text",
+        );
+        if (firstEditableSpan instanceof HTMLElement) {
+          firstEditableSpan.focus();
+        }
+
+        // Handle SVG elements to prevent interference
+        const svgs = view.el.querySelectorAll("svg");
+        svgs.forEach((svg: Element) => {
+          if (svg instanceof SVGElement) {
+            svg.style.pointerEvents = "none";
+            svg.style.userSelect = "none";
+            svg.setAttribute("contenteditable", "false");
+          }
+        });
+
+        // Add input handler for real-time sync
+        const handleInput = () => {
+          console.log("📝 Syncing heading content to model");
+          // Update the component's content in the model
+          component.set("content", view.el.innerHTML);
+          component.components(view.el.innerHTML);
+        };
+
+        // Add blur handler for final sync
+        const handleBlur = () => {
+          // Remove event listeners
+          view.el.removeEventListener("input", handleInput);
+          view.el.removeEventListener("blur", handleBlur);
+
+          // Final sync
+          const newContent = view.el.innerHTML;
+          if (newContent !== originalContent) {
+            component.set("content", newContent);
+            component.components(newContent);
+            console.log("✅ Final sync of heading content on blur");
+          }
+
+          // Clean up
+          view.el.contentEditable = "false";
+          component.set("_isBeingEdited", false);
+
+          // Force editor to update
+          editor.trigger("component:update", component);
+        };
+
+        // Add listeners
+        view.el.addEventListener("input", handleInput);
+        view.el.addEventListener("blur", handleBlur);
+      }
+    };
+
+    // Helper function to extract text from element, ignoring SVG contents
+    const extractTextFromElement = (element: HTMLElement): string => {
+      let text = "";
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+          // Skip text nodes inside SVG elements
+          if (node.parentElement?.closest("svg")) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+
+      let node;
+      while ((node = walker.nextNode())) {
+        text += node.textContent;
+      }
+
+      return text.trim();
+    };
+
+    // Function to handle text extraction mode for complex headings
+    const handleHeadingTextExtraction = (component: any) => {
+      console.log("🔍 Using text extraction mode for complex heading");
+
+      // Mark component as being edited
+      component.set("_isBeingEdited", true);
+
+      // Get component view
+      const view = component.getView();
+      if (!view || !view.el) return;
+
+      // Store original content
+      const originalContent = view.el.innerHTML;
+
+      // Find all text nodes in the heading (excluding those in SVG elements)
+      const textContent = extractTextFromElement(view.el);
+      console.log("📄 Extracted text content:", textContent);
+
+      // Create an overlay for editing just the text
+      const overlay = document.createElement("div");
+      overlay.className = "heading-text-editor-overlay";
+      overlay.style.position = "fixed";
+      overlay.style.top = "0";
+      overlay.style.left = "0";
+      overlay.style.right = "0";
+      overlay.style.bottom = "0";
+      overlay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+      overlay.style.zIndex = "9999";
+      overlay.style.display = "flex";
+      overlay.style.justifyContent = "center";
+      overlay.style.alignItems = "center";
+
+      // Create editor container
+      const editorContainer = document.createElement("div");
+      editorContainer.style.backgroundColor = "white";
+      editorContainer.style.padding = "20px";
+      editorContainer.style.borderRadius = "6px";
+      editorContainer.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
+      editorContainer.style.width = "80%";
+      editorContainer.style.maxWidth = "600px";
+
+      // Create title
+      const title = document.createElement("h3");
+      title.textContent = "Edit Heading Text";
+      title.style.margin = "0 0 15px 0";
+      title.style.fontSize = "18px";
+      title.style.fontWeight = "bold";
+
+      // Create textarea for editing
+      const textarea = document.createElement("textarea");
+      textarea.value = textContent;
+      textarea.style.width = "100%";
+      textarea.style.minHeight = "100px";
+      textarea.style.padding = "10px";
+      textarea.style.borderRadius = "4px";
+      textarea.style.border = "1px solid #d1d5db";
+      textarea.style.marginBottom = "15px";
+      textarea.style.fontFamily = "inherit";
+      textarea.style.fontSize = "16px";
+
+      // Create buttons container
+      const buttonsContainer = document.createElement("div");
+      buttonsContainer.style.display = "flex";
+      buttonsContainer.style.justifyContent = "flex-end";
+      buttonsContainer.style.gap = "10px";
+
+      // Create cancel button
+      const cancelButton = document.createElement("button");
+      cancelButton.textContent = "Cancel";
+      cancelButton.style.padding = "8px 16px";
+      cancelButton.style.borderRadius = "4px";
+      cancelButton.style.border = "1px solid #d1d5db";
+      cancelButton.style.backgroundColor = "#f9fafb";
+      cancelButton.style.cursor = "pointer";
+
+      // Create save button
+      const saveButton = document.createElement("button");
+      saveButton.textContent = "Update Heading";
+      saveButton.style.padding = "8px 16px";
+      saveButton.style.borderRadius = "4px";
+      saveButton.style.border = "none";
+      saveButton.style.backgroundColor = "#4F46E5";
+      saveButton.style.color = "white";
+      saveButton.style.cursor = "pointer";
+
+      // Add click handlers
+      cancelButton.addEventListener("click", () => {
+        overlay.remove();
+        component.set("_isBeingEdited", false);
+      });
+
+      saveButton.addEventListener("click", () => {
+        // Get the new text
+        const newText = textarea.value;
+
+        // Update the heading by replacing just the text nodes
+        updateHeadingTextContent(component, newText);
+
+        // Clean up
+        overlay.remove();
+        component.set("_isBeingEdited", false);
+
+        // Force editor to update
+        editor.trigger("component:update", component);
+        console.log("✅ Updated heading text content");
+      });
+
+      // Assemble the UI
+      buttonsContainer.appendChild(cancelButton);
+      buttonsContainer.appendChild(saveButton);
+
+      editorContainer.appendChild(title);
+      editorContainer.appendChild(textarea);
+      editorContainer.appendChild(buttonsContainer);
+
+      overlay.appendChild(editorContainer);
+
+      // Add to document body
+      document.body.appendChild(overlay);
+
+      // Focus the textarea
+      textarea.focus();
+    };
+
+    // Helper function to update heading by replacing text nodes but preserving structure
+    const updateHeadingTextContent = (component: any, newText: string) => {
+      const view = component.getView();
+      if (!view || !view.el) return;
+
+      // Clone the element to preserve structure
+      const clone = view.el.cloneNode(true) as HTMLElement;
+
+      // Replace all text nodes except those in SVGs
+      let textNodeIndex = 0;
+      const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+          // Skip text nodes inside SVG elements
+          if (node.parentElement?.closest("svg")) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+
+      // Clear all existing text nodes
+      let node;
+      while ((node = walker.nextNode())) {
+        if (textNodeIndex === 0) {
+          // Replace the first text node with the entire new text
+          node.textContent = newText;
+          textNodeIndex++;
+        } else {
+          // Clear out any additional text nodes
+          node.textContent = "";
+        }
+      }
+
+      // Update the component content
+      const newContent = clone.innerHTML;
+      component.set("content", newContent);
+      component.components(newContent);
+    };
 
     // Style the root wrapper as a fixed desktop page (non-responsive)
     const wrapper = editor.DomComponents.getWrapper();
@@ -478,6 +957,60 @@ export default function TailwindGrapes() {
         "pre",
         "code",
       ];
+
+      // Always make heading elements editable, regardless of content
+      const headingElements = ["h1", "h2", "h3", "h4", "h5", "h6"];
+      if (headingElements.includes(tagName)) {
+        component.set("editable", true);
+        component.set("selectable", true);
+        component.set("hoverable", true);
+        component.set("droppable", true);
+        component.set("resizable", true);
+
+        // Force wrap text nodes in the heading after a small delay to ensure view is ready
+        setTimeout(() => {
+          const view = component.getView();
+          if (view && view.el) {
+            forceWrapTextNodes(view.el);
+
+            // Process all children to make text editable
+            const processTextSpans = () => {
+              const textSpans = view.el.querySelectorAll(
+                "span.gjs-editable-text",
+              );
+              textSpans.forEach((span: Element) => {
+                // Make sure GrapesJS recognizes these as editable
+                if (span instanceof HTMLElement) {
+                  span.setAttribute("data-gjs-editable", "true");
+                  span.setAttribute("data-gjs-type", "text");
+                  span.style.cursor = "text";
+
+                  // Add click handler to enable editing
+                  span.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    span.contentEditable = "true";
+                    span.focus();
+
+                    // Add blur handler to sync content
+                    span.addEventListener(
+                      "blur",
+                      () => {
+                        span.contentEditable = "false";
+                        const newContent = view.el.innerHTML;
+                        component.set("content", newContent);
+                        component.components(newContent);
+                      },
+                      { once: true },
+                    );
+                  });
+                }
+              });
+            };
+
+            processTextSpans();
+          }
+        }, 100);
+      }
 
       // Check if it's a text element or text component
       if (
@@ -746,6 +1279,33 @@ export default function TailwindGrapes() {
     });
 
     // Also handle existing components when HTML is loaded
+    editor.on("component:mount", (component) => {
+      const tagName = component.get("tagName")?.toLowerCase();
+      const headingElements = ["h1", "h2", "h3", "h4", "h5", "h6"];
+
+      if (headingElements.includes(tagName)) {
+        setTimeout(() => {
+          const view = component.getView();
+          if (view && view.el) {
+            // Force wrap text nodes
+            forceWrapTextNodes(view.el);
+
+            // Make text spans clickable to edit
+            const textSpans = view.el.querySelectorAll(
+              "span.gjs-editable-text",
+            );
+            textSpans.forEach((span: Element) => {
+              if (span instanceof HTMLElement) {
+                span.style.cursor = "text";
+                span.title = "Click to edit text";
+              }
+            });
+          }
+        }, 100);
+      }
+    });
+
+    // Process components on initial load
     editor.on("load", () => {
       // Make all existing table cells editable and apply RTL
       const allComponents = editor.DomComponents.getComponents();
@@ -803,6 +1363,108 @@ export default function TailwindGrapes() {
       }
     });
 
+    // Add storage:store:before event handler to sync heading content before storage
+    editor.on("storage:store:before", (data) => {
+      console.log("📦 Storage operation starting - syncing heading content");
+
+      const syncAllHeadings = (components: any) => {
+        components.each((component: any) => {
+          const tagName = component.get("tagName")?.toLowerCase();
+          const headingElements = ["h1", "h2", "h3", "h4", "h5", "h6"];
+
+          if (headingElements.includes(tagName)) {
+            const view = component.getView();
+            if (view && view.el) {
+              // Sync current DOM content to model
+              const currentContent = view.el.innerHTML;
+              const oldContent = component.get("content");
+
+              if (currentContent !== oldContent) {
+                component.set("content", currentContent);
+                component.components(currentContent);
+                console.log(`✅ Synced ${tagName} content before storage`);
+              }
+            }
+          }
+
+          // Recursively check children
+          if (component.components && component.components().length > 0) {
+            syncAllHeadings(component.components());
+          }
+        });
+      };
+
+      const allComponents = editor.DomComponents.getComponents();
+      syncAllHeadings(allComponents);
+    });
+
+    // Listen for component update events to ensure content is synced
+    editor.on("component:update", (component) => {
+      // Special handling for heading elements
+      const tagName = component.get("tagName")?.toLowerCase();
+      if (tagName && ["h1", "h2", "h3", "h4", "h5", "h6"].includes(tagName)) {
+        // Only sync if this heading is being edited to avoid loops
+        if (component.get("_isBeingEdited")) {
+          console.log(`Heading ${tagName} updated, ensuring content is synced`);
+
+          // Force sync from view if it's available
+          const view = component.getView();
+          if (view && view.el) {
+            const viewContent = view.el.innerHTML;
+            const modelContent = component.get("content");
+
+            // Only update if there's a difference to avoid loops
+            if (viewContent !== modelContent) {
+              component.set("content", viewContent);
+              component.components(viewContent);
+              console.log(`📝 Auto-synced heading content on update`);
+            }
+          }
+        }
+
+        // Add edit buttons to toolbar for complex headings with SVG
+        const view = component.getView();
+        if (view && view.el && view.el.querySelector("svg")) {
+          // Add edit buttons to toolbar if not already there
+          const toolbar = component.get("toolbar") || [];
+          const hasEditBtn = toolbar.some(
+            (item: any) => item.id === "heading-edit-btn",
+          );
+          const hasExtractBtn = toolbar.some(
+            (item: any) => item.id === "heading-extract-btn",
+          );
+
+          if (!hasEditBtn) {
+            toolbar.push({
+              id: "heading-edit-btn",
+              command: (editor: any) => {
+                handleHeadingEdit(component);
+              },
+              attributes: {
+                class: "fa fa-pencil",
+                title: "Edit Heading",
+              },
+            });
+          }
+
+          if (!hasExtractBtn) {
+            toolbar.push({
+              id: "heading-extract-btn",
+              command: (editor: any) => {
+                handleHeadingTextExtraction(component);
+              },
+              attributes: {
+                class: "fa fa-text-width",
+                title: "Extract & Edit Text Only",
+              },
+            });
+          }
+
+          component.set("toolbar", toolbar);
+        }
+      }
+    });
+
     // Inject Tailwind config before Tailwind executes
     // Preflight is enabled by default (Tailwind's standard behavior)
     // This ensures proper rendering of borders, spacing, and utilities
@@ -810,6 +1472,108 @@ export default function TailwindGrapes() {
     editor.on("canvas:frame:load", () => {
       const frameDoc = editor.Canvas.getDocument();
       if (!frameDoc) return;
+
+      // Add special CSS for heading editing
+      const headingEditStyles = frameDoc.createElement("style");
+      headingEditStyles.textContent = `
+        /* Heading edit styles */
+        h1, h2, h3, h4, h5, h6 {
+          position: relative;
+          transition: background-color 0.2s;
+        }
+
+        h1:hover, h2:hover, h3:hover, h4:hover, h5:hover, h6:hover {
+          cursor: text;
+        }
+
+        h1[contenteditable="true"],
+        h2[contenteditable="true"],
+        h3[contenteditable="true"],
+        h4[contenteditable="true"],
+        h5[contenteditable="true"],
+        h6[contenteditable="true"] {
+          outline: 2px dashed rgba(59, 130, 246, 0.5) !important;
+          outline-offset: 2px !important;
+          background-color: rgba(59, 130, 246, 0.05) !important;
+        }
+
+        /* Make SVG non-interactive when parent heading is being edited */
+        h1[contenteditable="true"] svg,
+        h2[contenteditable="true"] svg,
+        h3[contenteditable="true"] svg,
+        h4[contenteditable="true"] svg,
+        h5[contenteditable="true"] svg,
+        h6[contenteditable="true"] svg {
+          pointer-events: none !important;
+          user-select: none !important;
+        }
+
+        /* Force editable text spans in headings */
+        span.gjs-editable-text {
+          outline: none !important;
+          display: inline;
+          min-width: 10px;
+        }
+
+        span.gjs-editable-text[contenteditable="true"] {
+          background-color: rgba(59, 130, 246, 0.1);
+          padding: 2px 4px;
+          border-radius: 2px;
+          cursor: text;
+        }
+
+        span.gjs-editable-text[contenteditable="true"]:focus {
+          background-color: rgba(59, 130, 246, 0.2);
+          outline: 1px dashed rgba(59, 130, 246, 0.5) !important;
+        }
+
+        /* Styles for the floating edit buttons */
+        #heading-edit-buttons {
+          position: absolute;
+          z-index: 10000;
+          display: flex;
+          gap: 8px;
+        }
+
+        #complex-heading-edit-btn, #extract-heading-text-btn {
+          background: #4F46E5;
+          color: white;
+          padding: 6px 12px;
+          border-radius: 4px;
+          font-size: 14px;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+          border: none;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+
+        #complex-heading-edit-btn:hover {
+          background: #4338CA;
+        }
+
+        #extract-heading-text-btn {
+          background: #047857;
+        }
+
+        #extract-heading-text-btn:hover {
+          background: #065F46;
+        }
+
+        /* Text extraction overlay styles */
+        .heading-text-editor-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 9999;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+      `;
+      frameDoc.head.appendChild(headingEditStyles);
 
       // Preflight enabled by default - no need to disable it
       // This ensures Tailwind utilities work correctly in the editor
@@ -847,11 +1611,88 @@ export default function TailwindGrapes() {
       frameDoc.head.appendChild(rtlStyles);
     });
 
+    // Add custom commands for editing complex headings
+    editor.Commands.add("edit-complex-heading", {
+      run(editor, sender, options) {
+        const component = options.component;
+        if (component) {
+          handleHeadingEdit(component);
+        }
+      },
+    });
+
+    editor.Commands.add("extract-heading-text", {
+      run(editor, sender, options) {
+        const component = options.component;
+        if (component) {
+          handleHeadingTextExtraction(component);
+        }
+      },
+    });
+
     // Command to send HTML/CSS to preview with all dependencies
     editor.Commands.add("send-to-preview", {
       run() {
-        // Get the basic HTML and CSS from the editor
+        console.log("📤 Sending to preview - syncing all headings first");
+
+        // Ensure all editable components are properly synced before export
+        const syncComponents = (components: any) => {
+          if (!components) return;
+          components.each((component: any) => {
+            // Special handling for headings
+            const tagName = component.get("tagName")?.toLowerCase();
+            if (
+              tagName &&
+              ["h1", "h2", "h3", "h4", "h5", "h6"].includes(tagName)
+            ) {
+              const view = component.getView();
+              if (view && view.el) {
+                // Make sure to get content from editable spans
+                const editableSpans = view.el.querySelectorAll(
+                  'span.gjs-editable-text[contenteditable="true"]',
+                );
+                editableSpans.forEach((span: Element) => {
+                  if (span instanceof HTMLElement) {
+                    span.removeAttribute("contenteditable");
+                  }
+                });
+
+                const content = view.el.innerHTML;
+                component.set("content", content);
+                component.components(content);
+                console.log(`📝 Synced ${tagName} content for preview`);
+              }
+            }
+
+            // Check if component is being edited
+            if (component.get("_isBeingEdited")) {
+              const view = component.getView();
+              if (view && view.el && view.el.isContentEditable) {
+                // Force save current edit state
+                view.el.blur();
+              }
+            }
+
+            // Process child components
+            if (component.components && component.components().length) {
+              syncComponents(component.components());
+            }
+          });
+        };
+
+        // Sync all components
+        syncComponents(editor.DomComponents.getComponents());
+
+        // Get the HTML (getHtml is already overridden to sync all content)
         let html = editor.getHtml();
+
+        // Clean up any contenteditable attributes
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html;
+        tempDiv.querySelectorAll("[contenteditable]").forEach((el) => {
+          el.removeAttribute("contenteditable");
+        });
+        html = tempDiv.innerHTML;
         const css = editor.getCss() ?? "";
 
         // Extract resources from defaultHtml to include in preview
@@ -876,7 +1717,7 @@ export default function TailwindGrapes() {
 
         // Get all external script tags
         const externalScriptTags = Array.from(
-          doc.querySelectorAll("script[src]"),
+          doc.querySelectorAll("script[src]") as NodeListOf<HTMLScriptElement>,
         )
           .map((script) => script.outerHTML)
           .join("\n");
@@ -1154,14 +1995,15 @@ export default function TailwindGrapes() {
             );
 
             // Extract external scripts (with src attribute) from head
-            const externalScripts =
-              originalDoc.querySelectorAll("head script[src]");
+            const externalScripts = Array.from(
+              originalDoc.querySelectorAll("head script[src]"),
+            ) as HTMLScriptElement[];
             const inlineScripts =
               originalDoc.querySelectorAll("script:not([src])");
 
             // Function to load external scripts and then execute inline scripts
             const loadExternalScripts = (
-              scripts: NodeListOf<HTMLScriptElement>,
+              scripts: HTMLScriptElement[],
               index: number = 0,
             ) => {
               if (index >= scripts.length) {
@@ -1452,10 +2294,10 @@ export default function TailwindGrapes() {
         const contentEl = modal.getContentEl();
 
         // Inject real HTML into each preview iframe using srcdoc
-        const iframeEls = contentEl.querySelectorAll<HTMLIFrameElement>(
+        const iframeEls = contentEl?.querySelectorAll<HTMLIFrameElement>(
           ".dp-template-iframe",
         );
-        iframeEls.forEach((frame) => {
+        iframeEls?.forEach((frame) => {
           const id = frame.getAttribute("data-template-id");
           if (!id) return;
           const tmpl = templates.find((t) => t.id === id);
@@ -1463,10 +2305,11 @@ export default function TailwindGrapes() {
           frame.srcdoc = tmpl.html;
         });
 
+        // Get template buttons
         const buttons =
-          contentEl.querySelectorAll<HTMLButtonElement>(".dp-template-apply");
+          contentEl?.querySelectorAll<HTMLButtonElement>(".dp-template-apply");
 
-        buttons.forEach((btn) => {
+        buttons?.forEach((btn) => {
           const id = btn.getAttribute("data-template-id");
           if (!id) return;
 
