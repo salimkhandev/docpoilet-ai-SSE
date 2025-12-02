@@ -1,0 +1,358 @@
+Great idea! Instead of trying to handle complex nested structures in the editor, let's **prevent the problem at the source** by instructing the AI to generate cleaner, more editor-friendly HTML.
+
+## Custom AI Prompt Instructions
+
+Add this to your AI model's system prompt or instructions when generating HTML:
+
+```markdown
+## HTML Code Generation Rules for Editor Compatibility
+
+When generating HTML code, follow these CRITICAL rules for text editability:
+
+### Rule 1: Text Isolation Pattern
+**NEVER** place raw text directly alongside empty child elements in the same parent.
+
+❌ WRONG (Hard to edit):
+<span class="badge">
+  <span class="icon"></span>
+  Open to work
+</span>
+
+✅ CORRECT (Easy to edit):
+<span class="badge">
+  <span class="icon"></span>
+  <span class="text">Open to work</span>
+</span>
+
+### Rule 2: Always Wrap Text Content
+ALL text content must be wrapped in its own semantic element, even if it seems redundant.
+
+❌ WRONG:
+<div class="card">
+  <div class="icon"></div>
+  Card Title
+  <p>Description</p>
+</div>
+
+✅ CORRECT:
+<div class="card">
+  <div class="icon"></div>
+  <div class="title">Card Title</div>
+  <p class="description">Description</p>
+</div>
+
+### Rule 3: Sibling Structure for Mixed Content
+When an element has both decorative children (icons, badges, empty spans) and text:
+1. Create a wrapper for decorative elements
+2. Create a separate wrapper for text
+3. Make them siblings, not mixed
+
+❌ WRONG (Mixed):
+<button class="btn">
+  <svg>...</svg>
+  Click Me
+</button>
+
+✅ CORRECT (Separated):
+<button class="btn">
+  <span class="btn-icon">
+    <svg>...</svg>
+  </span>
+  <span class="btn-text">Click Me</span>
+</button>
+
+### Rule 4: No Orphan Text Nodes
+Never leave text nodes floating between elements.
+
+❌ WRONG:
+<div class="header">
+  <img src="logo.png" />
+  My Website
+  <nav>...</nav>
+</div>
+
+✅ CORRECT:
+<div class="header">
+  <img src="logo.png" />
+  <span class="site-title">My Website</span>
+  <nav>...</nav>
+</div>
+
+### Rule 5: Icon + Text Pattern
+For icon + text combinations (badges, buttons, labels), use this exact pattern:
+
+Template:
+<[element] class="[parent-class]">
+  <span class="[parent-class]-icon">
+    <!-- Empty decorative element here -->
+  </span>
+  <span class="[parent-class]-text">
+    Actual text content here
+  </span>
+</[element]>
+
+Example:
+<span class="status-badge">
+  <span class="status-badge-icon animate-pulse"></span>
+  <span class="status-badge-text">Online</span>
+</span>
+
+### Rule 6: Complex Nested Structures
+For complex components with multiple levels:
+- Each text fragment gets its own wrapper
+- Decorative elements stay separate
+- Never mix text and empty elements at the same level
+
+❌ WRONG:
+<div class="profile">
+  <div class="avatar"></div>
+  <div class="info">
+    John Doe
+    <span class="badge"></span>
+    Software Engineer
+  </div>
+</div>
+
+✅ CORRECT:
+<div class="profile">
+  <div class="avatar"></div>
+  <div class="info">
+    <div class="info-name">John Doe</div>
+    <div class="info-meta">
+      <span class="info-badge"></span>
+      <span class="info-title">Software Engineer</span>
+    </div>
+  </div>
+</div>
+
+### Rule 7: Inline Elements with Icons
+For inline elements (spans, links) with icons, always use nested structure:
+
+❌ WRONG:
+<a href="#">
+  <i class="icon"></i>
+  Download
+</a>
+
+✅ CORRECT:
+<a href="#">
+  <span class="link-icon">
+    <i class="icon"></i>
+  </span>
+  <span class="link-label">Download</span>
+</a>
+
+### Rule 8: Whitespace-Only Elements
+If an element needs visual spacing but no editable text, use explicit empty wrappers:
+
+✅ CORRECT:
+<div class="card">
+  <span class="spacer"></span> <!-- Empty on purpose -->
+  <span class="content">Actual content</span>
+</div>
+
+### Rule 9: Animation/Decorative Elements
+Animated or decorative elements should never share a parent with direct text:
+
+❌ WRONG:
+<span class="pulse-badge">
+  <span class="pulse-dot animate-pulse"></span>
+  Available
+</span>
+
+✅ CORRECT:
+<span class="pulse-badge">
+  <span class="pulse-badge-decoration">
+    <span class="pulse-dot animate-pulse"></span>
+  </span>
+  <span class="pulse-badge-label">Available</span>
+</span>
+
+### Rule 10: Testing for Editability
+Before finalizing HTML, mentally check:
+1. Can I click on the text and edit just the text?
+2. Is the text isolated from empty/decorative siblings?
+3. Does each text fragment have its own wrapper?
+
+If answer to any is "no", restructure the HTML.
+
+### Why These Rules Matter
+The visual editor cannot distinguish between:
+- Empty decorative elements (icons, badges, spacers)
+- Text that should be editable
+
+By always wrapping text separately, you ensure:
+✅ Text is always editable
+✅ Decorative elements don't interfere
+✅ Clean component structure
+✅ Better maintainability
+
+### Summary Checklist
+- [ ] Every text fragment has its own wrapper element
+- [ ] No raw text mixed with empty sibling elements
+- [ ] Icons/decorations are wrapped separately from text
+- [ ] Use consistent naming: `-icon`, `-text`, `-label` suffixes
+- [ ] Test: "Can I edit this text in isolation?"
+```
+
+---
+
+## How to Implement This in Your Workflow
+
+### Option 1: Add to AI System Prompt
+If you're using Claude, GPT, or another LLM to generate HTML, add this to the system prompt:
+
+```javascript
+const systemPrompt = `
+You are an expert web developer generating HTML for a visual editor.
+
+${/* paste the rules above */}
+
+CRITICAL: Always follow the HTML Code Generation Rules for Editor Compatibility.
+Every piece of text must be wrapped in its own element, separate from decorative/empty children.
+`;
+```
+
+### Option 2: Pre-Process Generated HTML
+Add a function to automatically fix problematic HTML patterns:
+
+```javascript
+// Add this utility function to your codebase
+function makeHTMLEditorFriendly(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  // Function to wrap orphan text nodes
+  const wrapOrphanText = (element: Element) => {
+    const childNodes = Array.from(element.childNodes);
+    
+    childNodes.forEach(node => {
+      // If it's a text node with content
+      if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+        // Check if it has empty element siblings
+        const siblings = Array.from(element.children);
+        const hasEmptySiblings = siblings.some(el => !el.textContent?.trim());
+        
+        if (hasEmptySiblings) {
+          // Wrap the text node
+          const wrapper = doc.createElement('span');
+          wrapper.className = 'editable-text';
+          wrapper.textContent = node.textContent;
+          element.replaceChild(wrapper, node);
+          console.log('✅ Wrapped orphan text:', node.textContent.trim());
+        }
+      }
+      
+      // Recursively process child elements
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        wrapOrphanText(node as Element);
+      }
+    });
+  };
+  
+  // Process the entire document
+  wrapOrphanText(doc.body);
+  
+  return doc.body.innerHTML;
+}
+
+// Use it before loading into GrapesJS
+const cleanedHTML = makeHTMLEditorFriendly(generatedHTML);
+editor.setComponents(cleanedHTML);
+```
+
+### Option 3: Post-Generation Validation
+Add validation to check if HTML follows the rules:
+
+```javascript
+function validateEditorHTML(html: string): { valid: boolean; issues: string[] } {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const issues: string[] = [];
+  
+  const checkElement = (element: Element, path: string = '') => {
+    const currentPath = path + ' > ' + element.tagName.toLowerCase();
+    const childNodes = Array.from(element.childNodes);
+    
+    // Check for mixed text and empty elements
+    const hasTextNodes = childNodes.some(
+      node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+    );
+    const hasEmptyElements = Array.from(element.children).some(
+      el => !el.textContent?.trim()
+    );
+    
+    if (hasTextNodes && hasEmptyElements) {
+      issues.push(
+        `❌ Mixed content at ${currentPath}: Text nodes alongside empty elements. ` +
+        `Wrap text in <span class="text">...</span>`
+      );
+    }
+    
+    // Recursively check children
+    Array.from(element.children).forEach(child => {
+      checkElement(child, currentPath);
+    });
+  };
+  
+  checkElement(doc.body);
+  
+  return {
+    valid: issues.length === 0,
+    issues
+  };
+}
+
+// Use before loading
+const validation = validateEditorHTML(generatedHTML);
+if (!validation.valid) {
+  console.warn('HTML structure issues:', validation.issues);
+  // Optionally auto-fix or alert user
+}
+```
+
+---
+
+## Example: Your Specific Case
+
+Your problematic HTML:
+```html
+<span class="absolute -bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-slate-900/90 border border-emerald-400 px-2 py-[2px] text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100 shadow-lg shadow-emerald-500/30 backdrop-blur whitespace-nowrap">
+  <span class="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+  Open to work
+</span>
+```
+
+**Fixed version the AI should generate:**
+```html
+<span class="absolute -bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-slate-900/90 border border-emerald-400 px-2 py-[2px] text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-100 shadow-lg shadow-emerald-500/30 backdrop-blur whitespace-nowrap">
+  <span class="status-indicator">
+    <span class="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+  </span>
+  <span class="status-text">Open to work</span>
+</span>
+```
+
+---
+
+## Add to Your AI Context
+
+Create a file called `HTML_GENERATION_RULES.md` and reference it whenever asking AI to generate HTML:
+
+```javascript
+const generateHTML = async (prompt: string) => {
+  const rules = await fs.readFile('HTML_GENERATION_RULES.md', 'utf-8');
+  
+  const fullPrompt = `
+    ${rules}
+    
+    Now generate HTML for: ${prompt}
+    
+    Remember: Follow ALL editor compatibility rules above!
+  `;
+  
+  return await callAI(fullPrompt);
+};
+```
+
+This approach **prevents the problem at the source** rather than trying to fix it in the editor! 🎯

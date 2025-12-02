@@ -1,74 +1,200 @@
 "use client"
-import { useEffect, useRef } from "react";
-import { useAIState } from "../../contexts/AIStateContext";
+import { useEffect, useRef } from "react"
+import grapesjs from "grapesjs"
+import "grapesjs/dist/css/grapes.min.css"
 
 const Documents = () => {
-  const { state } = useAIState();
-  const iframeRef = useRef(null);
+  const editorRef = useRef(null)
+  const containerRef = useRef(null)
 
   const defaultHtml = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mountain Scene - Tailwind CSS</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
+  <title>Simple Section</title>
+  <style>
+    body {
+      background: #0f172a;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      color: white;
+    }
+    section {
+      margin-top: 20px;
+    }
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      color: #cbd5e1;
+      margin-bottom: 10px;
+    }
+    .bar {
+      width: 4px;
+      height: 16px;
+      border-radius: 4px;
+      background: #60a5fa;
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-b from-blue-200 to-blue-500 min-h-screen flex items-center justify-center">
-  <div class="flex flex-col items-center">
-    <h1 class="text-3xl font-bold mb-4 flex items-center gap-2" style="font-family: 'Montserrat', sans-serif;">
-      <span>🏔️</span> Mountain Scene Example
+<body>
+  <section>
+    <h1 class="title">
+      <span class="bar"></span>
+      Experiences
     </h1>
-    <div class="relative w-[400px] h-[250px]">
-      <svg viewBox="0 0 400 250" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
-        <rect width="400" height="250" fill="url(#skyGradient)" />
-        <defs>
-          <linearGradient id="skyGradient" x1="0" y1="0" x2="0" y2="250" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#BEE3F8"/>
-            <stop offset="1" stop-color="#63B3ED"/>
-          </linearGradient>
-        </defs>
-        <circle cx="320" cy="60" r="30" fill="#FFD700" opacity="0.8"/>
-        <polygon points="70,220 200,50 330,220" fill="#4A5568"/>
-        <polygon points="200,50 230,110 200,90 170,110" fill="#EDF2F7"/>
-        <polygon points="120,220 200,120 280,220" fill="#718096"/>
-        <rect x="90" y="200" width="8" height="20" fill="#2F855A"/>
-        <rect x="302" y="200" width="8" height="20" fill="#2F855A"/>
-        <polygon points="94,200 98,190 102,200" fill="#38A169"/>
-        <polygon points="306,200 310,190 314,200" fill="#38A169"/>
-        <rect y="220" width="400" height="30" fill="#68D391"/>
-      </svg>
-    </div>
-    <p class="mt-4 text-gray-700 max-w-xl text-center">
-      <strong>Explanation:</strong> This scene uses SVG to draw a stylized mountain landscape with a sun, snow cap, and trees.
+    <p style="color:#94a3b8;">
+      This is an example section where you can add your content.
     </p>
-  </div>
+  </section>
 </body>
 </html>
-`;
-
-  const htmlContent = state.htmlContent || defaultHtml;
+  `
 
   useEffect(() => {
-    if (iframeRef.current) {
-      const iframe = iframeRef.current;
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-      iframeDoc.open();
-      iframeDoc.write(htmlContent);
-      iframeDoc.close();
+    if (!editorRef.current && containerRef.current) {
+      const editor = grapesjs.init({
+        container: containerRef.current,
+        height: "100vh",
+        width: "100%",
+        fromElement: false,
+        storageManager: false
+      })
+
+      editorRef.current = editor
+      editor.setComponents(defaultHtml)
+
+      // Store pending cursor position globally
+      let pendingCursorPosition = null
+
+      // Listen for RTE enable event to set cursor position
+      editor.on('rte:enable', (view) => {
+        console.log('🎯 RTE enabled')
+
+        if (pendingCursorPosition && view && view.el) {
+          const { clickX, clickY } = pendingCursorPosition
+
+          // Wait for RTE to be fully ready
+          setTimeout(() => {
+            const el = view.el
+
+            if (!el.isContentEditable) {
+              console.warn('Element not editable yet')
+              return
+            }
+
+            // Focus first
+            el.focus()
+
+            // Set cursor position
+            try {
+              let range = null
+
+              if (document.caretRangeFromPoint) {
+                range = document.caretRangeFromPoint(clickX, clickY)
+              } else if (document.caretPositionFromPoint) {
+                const pos = document.caretPositionFromPoint(clickX, clickY)
+                if (pos) {
+                  range = document.createRange()
+                  range.setStart(pos.offsetNode, pos.offset)
+                  range.collapse(true)
+                }
+              }
+
+              if (range) {
+                const sel = window.getSelection()
+                sel.removeAllRanges()
+                sel.addRange(range)
+                console.log('✅ Cursor positioned at click location')
+              }
+            } catch (err) {
+              console.warn('Error setting cursor:', err)
+            }
+
+            // Clear pending position
+            pendingCursorPosition = null
+          }, 150)
+        }
+      })
+
+      // Ensure content is synced when RTE is disabled (when you click away)
+      editor.on('rte:disable', (view) => {
+        console.log('💾 RTE disabled - saving content')
+
+        if (view && view.el) {
+          const component = view.model
+          if (component) {
+            const currentContent = view.el.innerHTML
+
+            // Update component with current DOM content
+            component.set('content', currentContent)
+            component.components(currentContent)
+
+            console.log('✅ Content synced on RTE disable:', currentContent)
+
+            // Trigger update event to notify GrapesJS
+            editor.trigger('component:update', component)
+          }
+        }
+      })
+
+      // Handle component mount
+      editor.on('component:mount', (component) => {
+        const tagName = component.get('tagName')
+        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p'].includes(tagName)) {
+          component.set({
+            editable: true,
+            stylable: true,
+          })
+
+          const view = component.view
+
+          // Double-click handler
+          view.el.addEventListener('dblclick', (e) => {
+            e.stopPropagation()
+
+            // Store click coordinates for later use
+            pendingCursorPosition = {
+              clickX: e.clientX,
+              clickY: e.clientY
+            }
+
+            console.log('📍 Stored click position:', pendingCursorPosition)
+
+            // Select component
+            editor.select(component)
+
+            // Enable RTE (this will trigger rte:enable event)
+            setTimeout(() => {
+              const rte = editor.RichTextEditor
+              if (rte && rte.enable) {
+                rte.enable(view, component.get('activeOnRender'))
+              }
+            }, 0)
+          })
+        }
+      })
+
+      // Log updates to verify content is being saved
+      editor.on('component:update', (component) => {
+        console.log('📝 Component updated:', component.toHTML())
+      })
     }
-  }, [htmlContent]);
+  }, [])
 
   return (
-    <div className="w-full h-screen flex justify-center items-center bg-gray-100 p-2">
-      <iframe
-        ref={iframeRef}
-        title="HTML Preview"
-        className="w-full h-full border-0 rounded-lg shadow-md"
-      />
+    <div className="w-full h-screen bg-gray-100 p-2">
+      <div
+        ref={containerRef}
+        className="w-full h-full rounded-lg overflow-hidden shadow-md"
+      ></div>
     </div>
-  );
-};
+  )
+}
 
-export default Documents;
+export default Documents
